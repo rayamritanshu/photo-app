@@ -192,7 +192,12 @@ body{
 
 .description span{
     font-weight: bold;
-    margin-right: 10px;
+    margin-right: 5px;
+}
+
+.follower-comment{ 
+    margin: 10px 0;
+    font-size: 14px;
 }
 
 .post-time{

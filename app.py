@@ -8,7 +8,7 @@ app = Flask(__name__)
 def home():
     current_user = fake_data.generate_user()
     return render_template(
-        'starter_template.html', 
+        'index.html', 
         user=current_user,
         posts=fake_data.generate_posts(n=8),
         stories=fake_data.generate_stories(n=6),
