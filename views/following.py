@@ -1,9 +1,8 @@
 from flask import Response, request
 from flask_restful import Resource
 from models import Following, User, db
+from views import security
 import json
-
-from my_decorators import handle_db_insert_error, is_id_a_valid_int, is_user_id_valid_int, is_valid_int
 
 def get_path():
     return request.host_url + 'api/posts/'
@@ -13,47 +12,54 @@ class FollowingListEndpoint(Resource):
         self.current_user = current_user
     
     def get(self):
-        # Your code here
         following = Following.query.filter_by(user_id=self.current_user.id)
-        sol = [model.to_dict_following() for model in following]
-        return Response(json.dumps(sol), mimetype="application/json", status=200)
+        return Response(json.dumps([model.to_dict_following() for model in following]), mimetype="application/json", status=200)
 
-    @is_user_id_valid_int
-    @handle_db_insert_error
+    @security.user_id_is_valid
     def post(self):
-        # Your code here
         body = request.get_json()
         user_id = body.get('user_id') 
         user = User.query.get(user_id)
         if not user:
             return Response(
-                json.dumps({'message': 'Invalid user id={0}'.format(user_id)}), mimetype="application/json", status=404)
-
-        following = Following(self.current_user.id, user_id)
-        db.session.add(following)
-        db.session.commit() 
+                json.dumps({
+                    'message': 'User id={0} does not exist'.format(user_id)
+                }), mimetype="application/json", status=404)
+        try:
+            following = Following(self.current_user.id, user_id)
+            db.session.add(following)
+            db.session.commit() 
+        except Exception:
+            import sys
+            print(sys.exc_info()[1])
+            return Response(
+                json.dumps({
+                    'message': 'Database Insert error. Are you already following user={0}? Please see the log files.'.format(user_id)}
+                ), 
+                mimetype="application/json", 
+                status=400
+            ) 
         return Response(json.dumps(following.to_dict_following()), mimetype="application/json", status=201)
-
 
 class FollowingDetailEndpoint(Resource):
     def __init__(self, current_user):
         self.current_user = current_user
     
-    @is_id_a_valid_int
+    @security.id_is_valid
     def delete(self, id):
-        # Your code here
         following = Following.query.get(id)
 
         if not following or following.user_id != self.current_user.id:
-            return Response(json.dumps({'message': 'Record not found'}), mimetype="application/json", status=404)
+            return Response(json.dumps({'message': 'Following record does not exist'}), mimetype="application/json", status=404)
         
         username = following.following.username
         Following.query.filter_by(id=id).delete()
         db.session.commit()
-        ser_data = {
-            'message': 'Unfollowed {0})'.format(username)
+        serialized_data = {
+            'message': 'You have successfully unfollowed {0} (user={1})'.format(username, id)
         }
-        return Response(json.dumps(ser_data), mimetype="application/json", status=200)
+        return Response(json.dumps(serialized_data), mimetype="application/json", status=200)
+
 
 
 

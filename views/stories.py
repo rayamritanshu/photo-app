@@ -1,7 +1,7 @@
 from flask import Response
 from flask_restful import Resource
 from models import Story
-from . import get_authorized_user_ids
+from views import get_authorized_user_ids
 import json
 
 class StoriesListEndpoint(Resource):
@@ -10,9 +10,8 @@ class StoriesListEndpoint(Resource):
         self.current_user = current_user
     
     def get(self):
-        # Your code here:
-        user_id_list = get_authorized_user_ids(self.current_user)
-        stories = Story.query.filter(Story.user_id.in_(user_id_list))
+        user_ids = get_authorized_user_ids(self.current_user)
+        stories = Story.query.filter(Story.user_id.in_(user_ids)).limit(5)
         return Response(json.dumps([story.to_dict() for story in stories]), mimetype="application/json", status=200)
 
 

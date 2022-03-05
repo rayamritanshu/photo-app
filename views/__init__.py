@@ -1,4 +1,5 @@
 from models import db, Following, Post
+from sqlalchemy import and_
 
 '''
 Below are some helper functions to help you with security:
@@ -25,8 +26,29 @@ def can_view_post(post_id, user):
     auth_users_ids = get_authorized_user_ids(user)
 
     # query for all the posts that are owned by the user:
-    post = Post.query.filter(Post.id==post_id and Post.user_id.in_(auth_users_ids)).first()
+    post = Post.query.filter(and_(Post.id==post_id, Post.user_id.in_(auth_users_ids))).first()
     if not post:
         return False
     return True
+
+def initialize_routes(api):
+    from .bookmarks import initialize_routes as init_bookmark_routes
+    from .comments import initialize_routes as init_comment_routes
+    from .followers import initialize_routes as init_follower_routes
+    from .following import initialize_routes as init_following_routes
+    from .posts import initialize_routes as init_post_routes
+    from .post_likes import initialize_routes as init_post_like_routes
+    from .profile import initialize_routes as init_profile_routes
+    from .stories import initialize_routes as init_story_routes
+    from .suggestions import initialize_routes as init_suggestion_routes
+    
+    init_bookmark_routes(api)
+    init_comment_routes(api)
+    init_follower_routes(api)
+    init_following_routes(api)
+    init_post_routes(api)
+    init_post_like_routes(api)
+    init_profile_routes(api)
+    init_story_routes(api)
+    init_suggestion_routes(api)
         
