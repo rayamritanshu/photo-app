@@ -10,11 +10,6 @@ def get_does_not_exist_response(model_name, id):
         status=404
     )
 
-    
-
-##############
-# Decorators #
-##############
 def _id_is_valid(self, func, key, *args, **kwargs):
     try:
         body = request.get_json()

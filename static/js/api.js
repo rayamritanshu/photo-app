@@ -43,7 +43,6 @@ const displayStatusCode = response => {
 
 const displayResponse = (data, elem) => {
     console.log(data);
-    // elem.classList.remove('active');
     elem.innerHTML = JSON.stringify(data, null, 3);
     hljs.highlightElement(elem);
     setTimeout(() => {elem.classList.add('active')} , 1);
@@ -65,6 +64,7 @@ const sendPostPatchRequest = (elem, url, method, body) => {
             method: method.toUpperCase(),
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCookie('csrf_access_token')
             },
             body: JSON.stringify(body),
         })
@@ -77,12 +77,33 @@ const sendPostPatchRequest = (elem, url, method, body) => {
 
 const sendDeleteRequest = (elem, url) => {
     elem.classList.remove('active');
-    fetch(url, { method: 'DELETE' })
+    fetch(url, { 
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': getCookie('csrf_access_token')
+            }
+        })
         .then(response => {
             displayStatusCode(response);
             return response.json()
         })
         .then(data => displayResponse(data, elem));
+};
+
+const getCookie = key => {
+    let name = key + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
 };
 
 

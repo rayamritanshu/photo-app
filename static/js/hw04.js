@@ -1,3 +1,19 @@
+const getCookie = key => {
+    let name = key + "=";
+    let decCookie = decodeURIComponent(document.cookie);
+    let cookies = decCookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let c = cookies[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
+};
+
 const story2Html = story => {
     return `
         <div>
@@ -50,6 +66,7 @@ const follow = userId => {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
         },
         body: JSON.stringify({ "user_id": userId })
     })
@@ -68,7 +85,11 @@ const follow = userId => {
 const unfollow = (followingId, userId) => {
     console.log('unfollowed', followingId, userId);
     fetch(`/api/following/${followingId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
+        },
     })
     .then(response => response.json())
     .then(data => {
@@ -124,6 +145,40 @@ const displaySuggestions = () => {
             document.querySelector('.suggestions > div').innerHTML = 
             suggestedUsers.map(suggestion2Html).join('\n');
         });
+};
+
+const comments2Html = comments => {
+    let html = '';
+    if (comments.length > 1) {
+        const postId = comments[0].post_id;
+        html += `<p>
+                <button id="post-detail-${postId}" class="link" 
+                    onclick="showPostDetail(event)"
+                    data-post-id="${postId}">
+                        View all ${ comments.length } comments
+                </button>
+            </p>`;
+    }
+    
+    html += comments.slice(comments.length-1, comments.length).map(comment => {
+        return `
+            <p>
+                <strong>${comment.user.username}</strong> 
+                ${comment.text}
+            </p>
+            <p class="timestamp">${comment.display_time}</p>
+        `
+    }).join('\n');
+    return html;
+};
+
+const displayPosts = () => {
+    fetch('/api/posts')
+        .then(response => response.json())
+        .then(posts => {
+            const html = posts.map(posts2HTML).join('\n');
+            document.querySelector('#posts').innerHTML = html;
+        })
 };
 
 const posts2HTML = post => {
@@ -188,40 +243,6 @@ const posts2HTML = post => {
     `;
 };
 
-const comments2Html = comments => {
-    let html = '';
-    if (comments.length > 1) {
-        const postId = comments[0].post_id;
-        html += `<p>
-                <button id="post-detail-${postId}" class="link" 
-                    onclick="showPostDetail(event)"
-                    data-post-id="${postId}">
-                        View all ${ comments.length } comments
-                </button>
-            </p>`;
-    }
-    
-    html += comments.slice(comments.length-1, comments.length).map(comment => {
-        return `
-            <p>
-                <strong>${comment.user.username}</strong> 
-                ${comment.text}
-            </p>
-            <p class="timestamp">${comment.display_time}</p>
-        `
-    }).join('\n');
-    return html;
-};
-
-const displayPosts = () => {
-    fetch('/api/posts')
-        .then(response => response.json())
-        .then(posts => {
-            const html = posts.map(posts2HTML).join('\n');
-            document.querySelector('#posts').innerHTML = html;
-        })
-};
-
 const convertHTML = html => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
@@ -244,6 +265,23 @@ const showPostDetail = ev => {
             document.querySelector('#close').focus();
         });
 };
+
+const getModal = (returnId, post) => {
+    return `
+    <div id="modal" class="modal-bg" 
+        onclick="hideModal(event);" data-return-id="${returnId}">
+        <button 
+            id="close" 
+            class="close" 
+            aria-label="Close Button"
+            onclick="hideModal(event);" 
+            data-return-id="${returnId}"><i class="fas fa-times"></i></button>
+        <div class="modal" role="dialog" aria-live="assertive">
+            ${getPostDetail(post)}
+        </div>
+    </div>
+    `
+}
 
 const hideModal = ev => {
     if (!ev || ev.target.id === 'modal' || ev.target.id === 'close') { 
@@ -281,6 +319,7 @@ const addBookmark = postId => {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
         },
         body: JSON.stringify({ "post_id": postId })
     })
@@ -308,7 +347,11 @@ const bookmarksToggle = ev => {
 
 const removeBookmark = (bookmarkId, postId) => {
     fetch(`/api/bookmarks/${bookmarkId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
+        },
     })
     .then(response => response.json())
     .then(data => {
@@ -334,6 +377,7 @@ const likePost = postId => {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
         },
         body: JSON.stringify({ "post_id": postId })
     })
@@ -349,7 +393,10 @@ const likePost = postId => {
 
 const unlikePost = (likeId, postId) => {
     fetch(`/api/posts/${postId}/likes/${likeId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+            'X-CSRF-TOKEN': getCookie('csrf_access_token')
+        },
     })
     .then(response => response.json())
     .then(data => {
@@ -360,6 +407,20 @@ const unlikePost = (likeId, postId) => {
         });
     });
 };
+
+const getCommentDetail = (imageURL, username, text, timestamp) => {
+    return `<div class="comment">
+        <img class="pic" src="${imageURL}" />
+        <div>
+            <p>
+                <strong>${username}</strong> ${text}
+            </p>
+            <span>${timestamp}</span>
+        </div>
+        <button><i class="far fa-heart"></i></button>
+    </div>`;
+};
+
 
 const addComment = ev => {
     const elem = ev.currentTarget;
@@ -383,6 +444,7 @@ const addComment = ev => {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCookie('csrf_access_token')
             },
             body: JSON.stringify(postData)
         })
@@ -425,36 +487,6 @@ const getPostDetail = post => {
             </div>
         </div>
     `;
-};
-
-const getModal = (returnId, post) => {
-    return `
-    <div id="modal" class="modal-bg" 
-        onclick="hideModal(event);" data-return-id="${returnId}">
-        <button 
-            id="close" 
-            class="close" 
-            aria-label="Close Button"
-            onclick="hideModal(event);" 
-            data-return-id="${returnId}"><i class="fas fa-times"></i></button>
-        <div class="modal" role="dialog" aria-live="assertive">
-            ${getPostDetail(post)}
-        </div>
-    </div>
-    `
-}
-
-const getCommentDetail = (imageURL, username, text, timestamp) => {
-    return `<div class="comment">
-        <img class="pic" src="${imageURL}" />
-        <div>
-            <p>
-                <strong>${username}</strong> ${text}
-            </p>
-            <span>${timestamp}</span>
-        </div>
-        <button><i class="far fa-heart"></i></button>
-    </div>`;
 };
 
 

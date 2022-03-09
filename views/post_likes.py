@@ -3,12 +3,15 @@ from flask_restful import Resource
 from models import LikePost, db
 import json
 from views import security
+from my_decorators import *
+import flask_jwt_extended
 
 class PostLikesListEndpoint(Resource):
 
     def __init__(self, current_user):
         self.current_user = current_user
     
+    @flask_jwt_extended.jwt_required()
     @security.post_id_is_valid
     @security.user_can_view_post
     def post(self, post_id):
@@ -21,7 +24,7 @@ class PostLikesListEndpoint(Resource):
             print(sys.exc_info()[1])
             return Response(
                 json.dumps({
-                    'message': 'Database Insert error. Is post={0} already liked by user={1}? Please see the log files.'.format(post_id, self.current_user.id)}
+                    'message': 'DB insertion error. Post already liked by user.'}
                 ), 
                 mimetype="application/json", 
                 status=400
@@ -34,6 +37,7 @@ class PostLikesDetailEndpoint(Resource):
     def __init__(self, current_user):
         self.current_user = current_user
     
+    @flask_jwt_extended.jwt_required()
     @security.id_is_valid
     def delete(self, post_id, id):
         print(post_id, id)
@@ -45,7 +49,7 @@ class PostLikesDetailEndpoint(Resource):
         LikePost.query.filter_by(id=id).delete()
         db.session.commit()
         serialized_data = {
-            'message': 'Like {0} successfully deleted.'.format(id)
+            'message': 'Like deleted!'
         }
         return Response(json.dumps(serialized_data), mimetype="application/json", status=200)
 
@@ -56,12 +60,12 @@ def initialize_routes(api):
         PostLikesListEndpoint, 
         '/api/posts/<post_id>/likes', 
         '/api/posts/<post_id>/likes/', 
-        resource_class_kwargs={'current_user': api.app.current_user}
+        resource_class_kwargs={'current_user': flask_jwt_extended.current_user}
     )
 
     api.add_resource(
         PostLikesDetailEndpoint, 
         '/api/posts/<post_id>/likes/<id>', 
         '/api/posts/<post_id>/likes/<id>/',
-        resource_class_kwargs={'current_user': api.app.current_user}
+        resource_class_kwargs={'current_user': flask_jwt_extended.current_user}
     )
